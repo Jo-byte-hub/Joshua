@@ -65,3 +65,42 @@ async function handleAntiLink(message, sock) {
     console.error('❌ Error in AntiLink:', err);
   }
 }
+// hidetag 
+async function handleHidetagCommand(message, sock) {
+  const { key, message: msgContent } = message;
+  const groupId = key.remoteJid;
+
+  if (!groupId.endsWith('@g.us')) return;
+
+  // Get group metadata and all participants
+  const groupMetadata = await sock.groupMetadata(groupId);
+  const sender = key.participant;
+  const senderIsAdmin = groupMetadata.participants.some(p =>
+    p.id === sender && (p.admin === 'admin' || p.admin === 'superadmin')
+  );
+
+  if (!senderIsAdmin) {
+    return await sock.sendMessage(groupId, {
+      text: '❌ Only admins can use the hidetag command.',
+      mentions: [sender]
+    });
+  }
+
+  // Extract message text after command
+  const text = msgContent?.conversation || msgContent?.extendedTextMessage?.text || '';
+  const commandBody = text.slice(text.indexOf(' ') + 1).trim();
+
+  if (!commandBody) {
+    return await sock.sendMessage(groupId, {
+      text: '⚠️ Please provide a message to send with hidetag.',
+      mentions: [sender]
+    });
+  }
+
+  const allParticipants = groupMetadata.participants.map(p => p.id);
+
+  await sock.sendMessage(groupId, {
+    text: commandBody,
+    mentions: allParticipants,
+  });
+  }
